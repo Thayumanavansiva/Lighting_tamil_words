@@ -41,17 +41,19 @@ export async function initializeSchema() {
     validator: {
       $jsonSchema: {
         bsonType: 'object',
-        required: ['word', 'meaning_ta', 'created_by', 'created_at', 'approved'],
+        required: ['word', 'meaning_ta', 'meaning_en','approved'],
         properties: {
           word: { bsonType: 'string' },
           meaning_ta: { bsonType: 'string' },
           meaning_en: { bsonType: 'string' },
           domain: { bsonType: 'string' },
           period: { bsonType: 'string' },
-          modern_equivalent: { bsonType: 'string' },
+          modern_equivalent: { bsonType: ['string', 'null'] },
+          status: { bsonType: 'string' },
           notes: { bsonType: 'string' },
-          created_by: { bsonType: 'string' },
           created_at: { bsonType: 'date' },
+          slug: { bsonType: ['string', 'null'] },
+          created_by: { bsonType: 'string' },
           approved: { bsonType: 'bool' }
         }
       }

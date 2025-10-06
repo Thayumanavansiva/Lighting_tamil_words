@@ -7,7 +7,7 @@ import { View, Text, StyleSheet } from 'react-native';
 
 function AppContent() {
   const { user, loading } = useAuth();
-  const [initializing, setInitializing] = useState(true);
+  const [initializing, setInitializing] = useState(false);
 
   useEffect(() => {
     if (!loading) {
@@ -20,13 +20,13 @@ function AppContent() {
     }
   }, [user, loading]);
 
- /* if (loading || initializing) {
+  if (loading || initializing) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
-  }*/
+  }
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

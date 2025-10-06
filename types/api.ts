@@ -1,4 +1,6 @@
 export interface User {
+  updated_at: string;
+  created_at: string;
   id: string;
   email: string;
   fullName: string;

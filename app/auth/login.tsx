@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import signIn from '@/lib/db';
+import db from '@/lib/db';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react-native';
 import * as SecureStore from 'expo-secure-store';
 
@@ -20,10 +20,21 @@ export default function LoginScreen() {
 
     setLoading(true);
     try {
-      const { data: { user } } = await signIn.signIn(email, password);
+      const response = await db.signIn(email, password);
+      const user = response.data.user;
+      
+      if (!user || !user.id) {
+        throw new Error('Invalid login response');
+      }
+      
       // Store user data securely
       await SecureStore.setItemAsync('user', JSON.stringify(user));
-      router.replace('/(tabs)');
+      
+      // Add a small delay to ensure storage is complete
+      setTimeout(() => {
+        router.replace('/(tabs)');
+      }, 100);
+      
     } catch (error: any) {
       Alert.alert('Login Failed', error.message || 'An error occurred during login.');
     } finally {
@@ -99,10 +110,8 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.demoCredentials}>
-          <Text style={styles.demoTitle}>Demo Credentials:</Text>
-          <Text style={styles.demoText}>Student: student@demo.com / demo123</Text>
-          <Text style={styles.demoText}>Teacher: teacher@demo.com / demo123</Text>
-          <Text style={styles.demoText}>Admin: admin@demo.com / demo123</Text>
+          <Text style={styles.demoTitle}>Credentials:</Text>
+          <Text style={styles.demoText}>student@demo.com / demo123</Text>
         </View>
       </View>
     </LinearGradient>

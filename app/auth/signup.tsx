@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link, router } from 'expo-router';
-import { signUp } from '@/lib/db';
+import db from '@/lib/db';
 import { Eye, EyeOff, Mail, Lock, User, GraduationCap } from 'lucide-react-native';
 
 export default function SignupScreen() {
@@ -18,39 +18,129 @@ export default function SignupScreen() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errors, setErrors] = useState<{
+    fullName?: string;
+    email?: string;
+    password?: string;
+    confirmPassword?: string;
+  }>({});
 
-  const handleSignup = async () => {
-    if (!formData.fullName || !formData.email || !formData.password) {
-      Alert.alert('Error', 'Please fill in all required fields.');
-      return;
+  // Function to validate email format
+  const isValidEmail = (email: string): boolean => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Function to validate password strength
+  const isValidPassword = (password: string): boolean => {
+    // At least 6 characters, 1 letter, and 1 number
+    const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,}$/;
+    return passwordRegex.test(password);
+  };
+
+  const handleSignup = async (): Promise<void> => {
+    console.log('Button clicked - Starting signup validation...');
+    Alert.alert('Debug', 'Signup process started');
+    
+    // Validation checks
+    const validationErrors = [];
+
+    // 1. Full Name Validation
+    if (!formData.fullName?.trim()) {
+      validationErrors.push('Full Name is required');
+    } else if (formData.fullName.trim().length < 2) {
+      validationErrors.push('Full Name must be at least 2 characters long');
     }
 
+    // 2. Email Validation
+    if (!formData.email?.trim()) {
+      validationErrors.push('Email is required');
+    } else if (!isValidEmail(formData.email)) {
+      validationErrors.push('Please enter a valid email address');
+    }
+
+    // 3. Password Validation
+    if (!formData.password) {
+      validationErrors.push('Password is required');
+    } else if (!isValidPassword(formData.password)) {
+      validationErrors.push('Password must be at least 6 characters long and contain at least one letter and one number');
+    }
+
+    // 4. Confirm Password Validation
     if (formData.password !== formData.confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
-      return;
+      validationErrors.push('Passwords do not match');
     }
 
-    if (formData.password.length < 6) {
-      Alert.alert('Error', 'Password must be at least 6 characters long.');
+    // 5. Role Validation (optional)
+    if (!['student', 'teacher'].includes(formData.role)) {
+      validationErrors.push('Please select a valid role');
+    }
+
+    console.log('Validation complete. Errors found:', validationErrors.length);
+
+    // If there are any validation errors, show them all
+    if (validationErrors.length > 0) {
+      Alert.alert(
+        'Signup Error',
+        validationErrors.join('\n\n'),
+        [{ text: 'OK', style: 'default' }]
+      );
       return;
     }
 
     setLoading(true);
+    console.log('Starting signup process...');
     try {
-      await signUp(formData.email, formData.password, formData.fullName, formData.role);
-      Alert.alert(
-        'Success!', 
-        'Account created successfully! Please sign in to continue.',
-        [
-          {
-            text: 'Sign In',
-            onPress: () => router.replace('/auth/login'),
-          }
-        ]
-      );
+      Alert.alert('Debug', 'Starting signup request...');
+      console.log('Validation passed, form data:', {
+        fullName: formData.fullName,
+        email: formData.email,
+        role: formData.role,
+        schoolName: formData.schoolName,
+        grade: formData.grade,
+        passwordLength: formData.password.length
+      });
+      
+      console.log('Attempting to sign up with:', { 
+        email: formData.email, 
+        fullName: formData.fullName, 
+        role: formData.role 
+      });
+      
+      const result = await db.signUp(formData.email, formData.password, formData.fullName, formData.role);
+      Alert.alert('Debug', 'Signup API response received');
+      console.log('Signup response:', result);
+      
+      console.log('Checking signup result:', result);
+      Alert.alert('Debug', 'Processing signup response: ' + JSON.stringify(result));
+      
+      if (result?.user) {
+        console.log('Successfully created account, navigating to login...');
+        Alert.alert(
+          'Success!', 
+          'Account created successfully! Please sign in to continue.',
+          [
+            {
+              text: 'Sign In',
+              onPress: () => {
+                console.log('Navigating to login screen...');
+                router.replace('/auth/login');
+              },
+            }
+          ]
+        );
+      } else {
+        console.log('Invalid signup response:', result);
+        throw new Error('Failed to create account: Invalid response format');
+      }
     } catch (error: any) {
-      Alert.alert('Signup Failed', error.message || 'An error occurred during signup.');
+      console.error('Signup error:', error);
+      Alert.alert(
+        'Signup Failed', 
+        `Error: ${error.message || 'An unknown error occurred during signup.'}\n\nPlease try again.`
+      );
     } finally {
+      console.log('Signup process completed, loading:', loading);
       setLoading(false);
     }
   };
@@ -71,13 +161,25 @@ export default function SignupScreen() {
             <View style={styles.inputContainer}>
               <User size={20} color="#666" style={styles.inputIcon} />
               <TextInput
-                style={styles.input}
+                style={[styles.input, errors.fullName && styles.inputError]}
                 placeholder="Full Name *"
                 placeholderTextColor="#999"
                 value={formData.fullName}
-                onChangeText={(text) => setFormData({ ...formData, fullName: text })}
+                onChangeText={(text) => {
+                  console.log('Updating fullName:', text);
+                  setFormData({ ...formData, fullName: text });
+                  // Validate full name
+                  if (text.trim().length < 2) {
+                    setErrors(prev => ({ ...prev, fullName: 'Full name must be at least 2 characters' }));
+                  } else {
+                    setErrors(prev => ({ ...prev, fullName: undefined }));
+                  }
+                }}
                 autoCapitalize="words"
               />
+              {errors.fullName && (
+                <Text style={styles.errorText}>{errors.fullName}</Text>
+              )}
             </View>
 
             <View style={styles.inputContainer}>
@@ -87,7 +189,16 @@ export default function SignupScreen() {
                 placeholder="Email *"
                 placeholderTextColor="#999"
                 value={formData.email}
-                onChangeText={(text) => setFormData({ ...formData, email: text })}
+                onChangeText={(text) => {
+                  console.log('Updating email:', text);
+                  setFormData({ ...formData, email: text });
+                  // Validate email
+                  if (!isValidEmail(text)) {
+                    setErrors(prev => ({ ...prev, email: 'Please enter a valid email address' }));
+                  } else {
+                    setErrors(prev => ({ ...prev, email: undefined }));
+                  }
+                }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -188,7 +299,13 @@ export default function SignupScreen() {
 
             <TouchableOpacity
               style={[styles.signupButton, loading && styles.signupButtonDisabled]}
-              onPress={handleSignup}
+              onPress={() => {
+                console.log('Signup button pressed');
+                handleSignup().catch(error => {
+                  console.error('Error in handleSignup:', error);
+                  Alert.alert('Error', 'Failed to process signup: ' + error.message);
+                });
+              }}
               disabled={loading}
             >
               <Text style={styles.signupButtonText}>
@@ -212,6 +329,16 @@ export default function SignupScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  inputError: {
+    borderColor: '#ff4444',
+  },
+  errorText: {
+    color: '#ff4444',
+    fontSize: 12,
+    marginTop: -10,
+    marginBottom: 10,
+    marginLeft: 15,
   },
   scrollView: {
     flex: 1,

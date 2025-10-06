@@ -26,7 +26,15 @@ export default function HomeScreen() {
       if (authUser) {
         const userData = await db.getUserById(authUser.id);
         if (userData) {
-          setUser(userData);
+          // Ensure all required User properties are present
+          setUser({
+            ...userData,
+            full_name: userData.fullName ?? '',
+            created_at: userData.created_at ?? '',
+            updated_at: userData.updated_at ?? '',
+            points: userData.points ?? 0,
+            level: userData.level ?? 1,
+          });
         }
       }
     } catch (error) {

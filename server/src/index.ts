@@ -15,30 +15,19 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configure CORS with explicit allowed origins to avoid browser blocks during dev
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000', // React dev
-  process.env.EXPO_WEB_URL || 'http://localhost:19006', // Expo web
-];
-
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        callback(new Error('CORS policy: origin not allowed'));
-      }
-    },
-    credentials: true,
-  })
-);
+// Enable CORS for all origins in development
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Accept', 'Authorization'],
+  credentials: true
+}));
 
 const PORT = process.env.PORT || 8081;
 
 // Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/games', gameRoutes);
+app.use('/auth', authRoutes);
+app.use('/games', gameRoutes);
 
 // Optional: serve a built frontend and fallback to index.html for client-side routing
 if (process.env.SERVE_FRONTEND === 'true') {
@@ -55,15 +44,17 @@ if (process.env.SERVE_FRONTEND === 'true') {
 }
 
 // Start server
-dbInstance
-  .connect()
-  .then(() => initializeSchema())
-  .then(() => {
+(async () => {
+  try {
+    // If dbInstance is synchronous, just use it directly
+    // If it's a promise, await it: await dbInstance;
+    await initializeSchema();
+    // await initSampleData(); // Call initSampleData after schema initialization
     app.listen(PORT, () => {
       console.log(`✅ Server is running on port ${PORT}`);
     });
-  })
-  .catch((error) => {
+  } catch (error) {
     console.error('❌ Failed to start server:', error);
     process.exit(1);
-  });
+  }
+})();
