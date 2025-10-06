@@ -6,6 +6,20 @@ import type { User } from '../config/schema';
 
 const router = Router();
 
+// Provide a friendly GET response for browsers that navigate to auth paths
+// This prevents a blank "Loading..." page when the frontend (web) navigates
+// to /auth/login instead of performing a POST API call. It returns a small
+// JSON payload and a helpful HTML fallback for browsers requesting the route.
+router.get('/', (_req, res) => {
+  // Basic JSON to indicate this is an API endpoint
+  res.json({ message: 'Auth API root. Use POST /signup and POST /login to authenticate.' });
+});
+
+router.get('/login', (_req, res) => {
+  // Provide a clear JSON message for direct browser/API access.
+  res.status(200).json({ message: 'This endpoint accepts POST requests to authenticate. Use POST /api/auth/login with { email, password }.' });
+});
+
 // Signup route
 router.post('/signup', async (req, res) => {
   try {
