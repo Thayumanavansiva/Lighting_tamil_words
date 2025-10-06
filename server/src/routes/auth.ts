@@ -6,18 +6,20 @@ import type { User } from '../config/schema';
 
 const router = Router();
 
-// Provide a friendly GET response for browsers that navigate to auth paths
-// This prevents a blank "Loading..." page when the frontend (web) navigates
-// to /auth/login instead of performing a POST API call. It returns a small
-// JSON payload and a helpful HTML fallback for browsers requesting the route.
+// Friendly GET root (for browser visits)
 router.get('/', (_req, res) => {
-  // Basic JSON to indicate this is an API endpoint
-  res.json({ message: 'Auth API root. Use POST /signup and POST /login to authenticate.' });
+  res.json({
+    message:
+      'Auth API root. Use POST /api/auth/signup and POST /api/auth/login to authenticate.',
+  });
 });
 
+// Prevent blank screen when browser navigates directly
 router.get('/login', (_req, res) => {
-  // Provide a clear JSON message for direct browser/API access.
-  res.status(200).json({ message: 'This endpoint accepts POST requests to authenticate. Use POST /api/auth/login with { email, password }.' });
+  res.status(200).json({
+    message:
+      'This endpoint accepts POST requests to authenticate. Use POST /api/auth/login with { email, password }.',
+  });
 });
 
 // Signup route
@@ -27,7 +29,7 @@ router.post('/signup', async (req, res) => {
     if (!email || !password || !fullName) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     const collections = getCollections();
     const existing = await collections.users.findOne({ email });
     if (existing) {
@@ -36,7 +38,7 @@ router.post('/signup', async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const now = new Date();
-    
+
     const newUser: Omit<User, '_id'> = {
       email,
       password: hashedPassword,
@@ -45,7 +47,7 @@ router.post('/signup', async (req, res) => {
       points: 0,
       level: 1,
       created_at: now,
-      updated_at: now
+      updated_at: now,
     };
 
     const result = await collections.users.insertOne(newUser);
@@ -53,8 +55,8 @@ router.post('/signup', async (req, res) => {
     // Remove password from response
     const { password: _, ...userResponse } = newUser;
     res.status(201).json({
-      id: result.insertedId,
-      ...userResponse
+      id: result.insertedId.toString(), // ensure string ID
+      ...userResponse,
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -67,7 +69,7 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     const collections = getCollections();
-    
+
     const user = await collections.users.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
@@ -81,8 +83,8 @@ router.post('/login', async (req, res) => {
     // Remove password from response
     const { password: _, ...userResponse } = user;
     res.json({
-      id: user._id,
-      ...userResponse
+      id: user._id.toString(),
+      ...userResponse,
     });
   } catch (error) {
     console.error('Login error:', error);

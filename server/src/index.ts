@@ -23,7 +23,6 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like curl, Postman) or from allowedOrigins
       if (!origin || allowedOrigins.indexOf(origin) !== -1) {
         callback(null, true);
       } else {
@@ -41,28 +40,28 @@ app.use('/api/auth', authRoutes);
 app.use('/api/games', gameRoutes);
 
 // Optional: serve a built frontend and fallback to index.html for client-side routing
-// Enable by setting SERVE_FRONTEND=true and placing your built web assets in the
-// directory referenced by FRONTEND_BUILD_PATH or adjust the path below.
 if (process.env.SERVE_FRONTEND === 'true') {
-  const frontendBuildPath = process.env.FRONTEND_BUILD_PATH || path.join(__dirname, '..', '..', 'web-build');
+  const frontendBuildPath =
+    process.env.FRONTEND_BUILD_PATH ||
+    path.join(__dirname, '..', '..', 'web-build');
   console.log('Serving frontend from', frontendBuildPath);
   app.use(express.static(frontendBuildPath));
 
   app.get('*', (req, res, next) => {
-    // Let API routes respond normally
     if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(frontendBuildPath, 'index.html'));
   });
 }
 
 // Start server
-dbInstance.connect()
+dbInstance
+  .connect()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+      console.log(`✅ Server is running on port ${PORT}`);
     });
   })
   .catch((error) => {
-    console.error('Failed to start server:', error);
+    console.error('❌ Failed to start server:', error);
     process.exit(1);
   });
