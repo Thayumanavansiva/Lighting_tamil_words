@@ -1,5 +1,6 @@
 {
   "name": "final-project-server",
+  "type": "commonjs",
   "version": "1.0.0",
   "main": "dist/index.js",
   "scripts": {

@@ -10,7 +10,7 @@ async function initializeSampleData() {
   const admin = await collections.users.insertOne({
     email: 'admin@example.com',
     password: adminPassword,
-    full_name: 'Admin User',
+    fullName: 'Admin User',
     role: 'admin',
     points: 0,
     level: 1,
@@ -29,7 +29,7 @@ async function initializeSampleData() {
       modern_equivalent: 'லிட்டர்',
       status: 'traditional',
       notes: '2 உறி = 1 படி',
-      created_by: admin.insertedId,
+  created_by: admin.insertedId.toString(),
       created_at: new Date(),
       approved: true
     },
@@ -42,7 +42,7 @@ async function initializeSampleData() {
       modern_equivalent: 'மில்லிலிட்டர்',
       status: 'extinct',
       notes: 'குறிய அளவு',
-      created_by: admin.insertedId,
+  created_by: admin.insertedId.toString(),
       created_at: new Date(),
       approved: true
     },
@@ -55,7 +55,7 @@ async function initializeSampleData() {
       modern_equivalent: 'நிமிடம்',
       status: 'extinct',
       notes: '24 நிமிடங்கள்',
-      created_by: admin.insertedId,
+  created_by: admin.insertedId.toString(),
       created_at: new Date(),
       approved: true
     }

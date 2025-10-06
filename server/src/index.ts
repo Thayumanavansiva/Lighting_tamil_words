@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { dbInstance } from './config/database';
 import authRoutes from './routes/auth';
 import gameRoutes from './routes/games';
+import { initializeSchema } from './config/schema';
 
 dotenv.config();
 
@@ -56,6 +57,7 @@ if (process.env.SERVE_FRONTEND === 'true') {
 // Start server
 dbInstance
   .connect()
+  .then(() => initializeSchema())
   .then(() => {
     app.listen(PORT, () => {
       console.log(`✅ Server is running on port ${PORT}`);

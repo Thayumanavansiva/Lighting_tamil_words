@@ -3,7 +3,7 @@ import { ObjectId } from 'mongodb';
 import { getCollections } from '../config/schema';
 import type { GameSession, User } from '../config/schema';
 
-interface LeaderboardUser extends Pick<User, '_id' | 'full_name' | 'points' | 'avatar_url'> {
+interface LeaderboardUser extends Pick<User, '_id' | 'fullName' | 'points' | 'avatar_url'> {
   games_played: number;
 }
 
@@ -87,7 +87,7 @@ router.get('/leaderboard', async (req, res) => {
       {
         $project: {
           _id: 1,
-          full_name: 1,
+          fullName: '$fullName',
           points: 1,
           avatar_url: 1,
           games_played: { $size: '$sessions' }
@@ -101,7 +101,7 @@ router.get('/leaderboard', async (req, res) => {
 
     res.json(leaderboard.map((user, index) => ({
       id: user._id ? user._id.toString() : '',
-      full_name: user.full_name,
+      fullName: (user as any).fullName || '',
       points: user.points,
       avatar_url: user.avatar_url,
       games_played: user.games_played,

@@ -20,13 +20,13 @@ function AppContent() {
     }
   }, [user, loading]);
 
-  if (loading || initializing) {
+ /* if (loading || initializing) {
     return (
       <View style={styles.loadingContainer}>
         <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
-  }
+  }*/
 
   return (
     <Stack screenOptions={{ headerShown: false }}>

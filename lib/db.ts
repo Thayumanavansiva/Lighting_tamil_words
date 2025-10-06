@@ -1,6 +1,6 @@
 import { User, GameSession, LeaderboardEntry } from '../types/api';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081/api';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8081';
 
 class DatabaseService {
   private static instance: DatabaseService;
@@ -22,7 +22,7 @@ class DatabaseService {
     }
     
     try {
-      const response = await fetch(`${API_URL}/auth/me`, {
+  const response = await fetch(`${API_URL}/api/auth/me`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -43,7 +43,7 @@ class DatabaseService {
   }
 
   async signUp(email: string, password: string, fullName: string, role: 'student' | 'teacher' = 'student'): Promise<{ user: User }> {
-    const response = await fetch(`${API_URL}/auth/signup`, {
+  const response = await fetch(`${API_URL}/api/auth/signup`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -67,7 +67,7 @@ class DatabaseService {
   }
 
   async signIn(email: string, password: string): Promise<{ data: { user: User } }> {
-    const response = await fetch(`${API_URL}/auth/login`, {
+  const response = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -96,7 +96,7 @@ class DatabaseService {
     return {
       select: (columns: string) => ({
         eq: async (field: string, value: any) => {
-          const response = await fetch(`${API_URL}/${table}?${field}=${value}`);
+          const response = await fetch(`${API_URL}/api/${table}?${field}=${value}`);
           if (!response.ok) {
             throw new Error('Failed to fetch data');
           }
@@ -106,7 +106,7 @@ class DatabaseService {
         order: (field: string, { ascending = true } = {}) => ({
           limit: async (limit: number) => {
             const response = await fetch(
-              `${API_URL}/${table}?sort=${field}&order=${ascending ? 'asc' : 'desc'}&limit=${limit}`
+              `${API_URL}/api/${table}?sort=${field}&order=${ascending ? 'asc' : 'desc'}&limit=${limit}`
             );
             if (!response.ok) {
               throw new Error('Failed to fetch data');
@@ -122,7 +122,7 @@ class DatabaseService {
   async getLeaderboard(options: { timeFilter?: 'all' | 'week' | 'month', limit?: number } = {}): Promise<LeaderboardEntry[]> {
     const { timeFilter = 'all', limit = 50 } = options;
     const response = await fetch(
-      `${API_URL}/leaderboard?timeFilter=${timeFilter}&limit=${limit}`
+      `${API_URL}/api/games/leaderboard?timeFilter=${timeFilter}&limit=${limit}`
     );
     
     if (!response.ok) {
@@ -133,7 +133,7 @@ class DatabaseService {
   }
 
   async getUserStats(userId: string) {
-    const response = await fetch(`${API_URL}/users/${userId}/stats`);
+  const response = await fetch(`${API_URL}/api/users/${userId}/stats`);
     if (!response.ok) {
       throw new Error('Failed to fetch user stats');
     }
@@ -151,7 +151,7 @@ export const signOut = async () => {
 
 // Game helpers
 export const getRandomWords = async (count: number = 10, difficulty: string = 'easy') => {
-  const response = await fetch(`${API_URL}/games/words?count=${count}&difficulty=${difficulty}`);
+  const response = await fetch(`${API_URL}/api/games/words?count=${count}&difficulty=${difficulty}`);
   if (!response.ok) {
     throw new Error('Failed to fetch words');
   }
@@ -159,7 +159,7 @@ export const getRandomWords = async (count: number = 10, difficulty: string = 'e
 };
 
 export const saveGameSession = async (sessionData: Omit<GameSession, 'id' | 'completed_at'>) => {
-  const response = await fetch(`${API_URL}/games/sessions`, {
+  const response = await fetch(`${API_URL}/api/games/sessions`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -175,7 +175,7 @@ export const saveGameSession = async (sessionData: Omit<GameSession, 'id' | 'com
 };
 
 export const getLeaderboard = async (limit: number = 10): Promise<LeaderboardEntry[]> => {
-  const response = await fetch(`${API_URL}/leaderboard?limit=${limit}`);
+  const response = await fetch(`${API_URL}/api/games/leaderboard?limit=${limit}`);
   if (!response.ok) {
     throw new Error('Failed to fetch leaderboard');
   }
