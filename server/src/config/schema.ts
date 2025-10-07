@@ -1,19 +1,19 @@
-import { Collection } from 'mongodb';
-import { dbInstance } from './database';
+// server/src/config/schema.ts
+import { Db } from 'mongodb';
+import { getDb } from './database';
 
-export async function initializeSchema() {
-  const db = dbInstance.getDb();
-
+// Initialize MongoDB collections and validation schemas
+export async function initializeSchema(db: Db = getDb()) {
   // List existing collections so we don't try to recreate them
   const existing = await db.listCollections({}, { nameOnly: true }).toArray();
   const existingNames = new Set(existing.map((c) => c.name));
 
   async function createIfMissing(name: string, options: any) {
     if (!existingNames.has(name)) {
-      console.log(`Creating collection: ${name}`);
+      console.log(`📘 Creating collection: ${name}`);
       await db.createCollection(name, options);
     } else {
-      console.log(`Collection already exists: ${name}`);
+      console.log(`✅ Collection already exists: ${name}`);
     }
   }
 
@@ -41,7 +41,7 @@ export async function initializeSchema() {
     validator: {
       $jsonSchema: {
         bsonType: 'object',
-        required: ['word', 'meaning_ta', 'meaning_en','approved'],
+        required: ['word', 'meaning_ta', 'meaning_en', 'approved'],
         properties: {
           word: { bsonType: 'string' },
           meaning_ta: { bsonType: 'string' },
@@ -146,56 +146,47 @@ export async function initializeSchema() {
   try {
     // Create indexes
     await Promise.all([
-      // Users indexes
       db.collection('users').createIndexes([
         { key: { email: 1 }, unique: true },
         { key: { role: 1 } },
         { key: { teacherId: 1 } }
       ]),
-
-      // Words indexes
       db.collection('words').createIndexes([
         { key: { word: 1 }, unique: true },
         { key: { approved: 1 } },
         { key: { created_by: 1 } }
       ]),
-
-      // Game sessions indexes
       db.collection('game_sessions').createIndexes([
         { key: { user_id: 1 } },
         { key: { completed_at: -1 } },
         { key: { game_type: 1 } }
       ]),
-
-      // Assignments indexes
       db.collection('assignments').createIndexes([
         { key: { teacher_id: 1 } },
         { key: { status: 1 } },
         { key: { due_date: 1 } }
       ]),
-
-      // Word requests indexes
       db.collection('word_requests').createIndexes([
         { key: { teacher_id: 1 } },
         { key: { status: 1 } },
         { key: { created_at: -1 } }
       ]),
-
-      // Achievements indexes
       db.collection('achievements').createIndexes([
         { key: { user_id: 1 } },
         { key: { category: 1 } }
       ])
     ]);
 
-    console.log('MongoDB indexes created successfully');
+    console.log('✅ MongoDB indexes created successfully');
   } catch (error) {
-    console.error('Error creating MongoDB indexes:', error);
+    console.error('❌ Error creating MongoDB indexes:', error);
     throw error;
   }
 }
 
-// Collection schemas (for TypeScript)
+// ==========================
+// 📘 TypeScript Interfaces
+// ==========================
 export interface User {
   _id?: string;
   email: string;
@@ -276,8 +267,10 @@ export interface Achievement {
   unlocked_at: Date;
 }
 
-// Helper function to get typed collections
-export function getCollections(db = dbInstance.getDb()) {
+// ==========================
+// 📘 Helper: Typed collections
+// ==========================
+export function getCollections(db: Db = getDb()) {
   return {
     users: db.collection<User>('users'),
     words: db.collection<Word>('words'),
