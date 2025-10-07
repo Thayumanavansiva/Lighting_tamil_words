@@ -4,6 +4,7 @@ import { connectToDatabase, getDb } from './config/database';
 import { initializeSchema } from './config/schema';
 import authRoutes from './routes/auth';
 import gamesRoutes from './routes/games';
+import { corsMiddleware } from './middleware/cors';
 
 dotenv.config();
 
@@ -13,6 +14,7 @@ export { app }; // Export the app for testing
 const PORT = process.env.PORT || 8081;
 
 app.use(express.json());
+app.use(corsMiddleware);
 app.use('/auth', authRoutes);
 app.use('/games', gamesRoutes);
 
