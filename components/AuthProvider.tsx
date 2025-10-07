@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types/api';
-import * as SecureStore from 'expo-secure-store';
+import { getItem, deleteItem } from '@/lib/storage';
 
 interface AuthContextType {
   user: User | null;
@@ -30,7 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Check for stored user data on mount
     const loadStoredUser = async () => {
       try {
-        const storedUser = await SecureStore.getItemAsync('user');
+        const storedUser = await getItem('user');
         if (storedUser) {
           setUser(JSON.parse(storedUser));
         }
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signOut = async () => {
     try {
-      await SecureStore.deleteItemAsync('user');
+      await deleteItem('user');
       setUser(null);
     } catch (error) {
       console.error('Error signing out:', error);

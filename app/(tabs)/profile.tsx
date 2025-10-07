@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import db from '@/lib/db';
+import { deleteItem } from '@/lib/storage';
 import { User as DbUser, GameSession } from '@/types/database';
 import { User as UserIcon, CreditCard as Edit, LogOut, Trophy, Calendar, ChartBar as BarChart3, Award } from 'lucide-react-native';
 
@@ -84,8 +85,8 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await SecureStore.deleteItemAsync('user');
-              await SecureStore.deleteItemAsync('token');
+              await deleteItem('user');
+              await deleteItem('token');
             } catch (error) {
               console.error('Error signing out:', error);
             }

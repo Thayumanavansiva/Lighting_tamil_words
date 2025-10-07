@@ -1,5 +1,5 @@
 import { User, Word as ApiWord, GameSession as ApiGameSession, LeaderboardEntry as ApiLeaderboardEntry } from '../types/api';
-import * as SecureStore from 'expo-secure-store';
+import { getItem, setItem, deleteItem } from '@/lib/storage';
 
 interface SignupResponse {
   user: User;
@@ -21,7 +21,7 @@ interface LoginResponse {
 }
 
 // Base URL for the backend server. Do NOT include a trailing /api — server mounts routes at root
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8081';
+const API_URL = ((globalThis as any)?.process?.env?.EXPO_PUBLIC_API_URL as string) || 'http://127.0.0.1:8081';
 
 // Helper function to handle API responses
 async function handleResponse(response: Response) {
@@ -99,8 +99,8 @@ class DatabaseService {
       this.currentUser = user;
       this.authToken = token;
       try {
-        await SecureStore.setItemAsync('user', JSON.stringify(user));
-        await SecureStore.setItemAsync('token', token);
+        await setItem('user', JSON.stringify(user));
+        await setItem('token', token);
       } catch (e) {
         console.warn('Failed to persist auth to secure storage:', e);
       }
@@ -125,8 +125,8 @@ class DatabaseService {
       return { data: { user: this.currentUser } };
     }
     try {
-      const stored = await SecureStore.getItemAsync('user');
-      const token = await SecureStore.getItemAsync('token');
+      const stored = await getItem('user');
+      const token = await getItem('token');
       if (stored) {
         const parsed = JSON.parse(stored) as User;
         this.currentUser = parsed;
@@ -224,7 +224,13 @@ class DatabaseService {
   // Basic stats placeholder until backend exposes metrics endpoints
   async getUserStats(id: string): Promise<{ totalPoints: number; gamesPlayed: number; currentStreak: number; rank: number }> {
     const leaderboard = await this.getLeaderboard({ limit: 50 });
-    const entry = leaderboard.find((e) => e.id === id);
+    let entry: ApiLeaderboardEntry | undefined = undefined;
+    for (let i = 0; i < leaderboard.length; i += 1) {
+      if (leaderboard[i].id === id) {
+        entry = leaderboard[i];
+        break;
+      }
+    }
     return {
       totalPoints: entry?.points || 0,
       gamesPlayed: 0,
