@@ -1,4 +1,5 @@
-import { User } from '../types/api';
+import { User, Word as ApiWord, GameSession as ApiGameSession, LeaderboardEntry as ApiLeaderboardEntry } from '../types/api';
+import * as SecureStore from 'expo-secure-store';
 
 interface SignupResponse {
   user: User;
@@ -19,7 +20,8 @@ interface LoginResponse {
   token: string;
 }
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:3000/api';
+// Base URL for the backend server. Do NOT include a trailing /api — server mounts routes at root
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:8081';
 
 // Helper function to handle API responses
 async function handleResponse(response: Response) {
@@ -38,6 +40,7 @@ async function handleResponse(response: Response) {
 class DatabaseService {
   private static instance: DatabaseService;
   private currentUser: User | null = null;
+  private authToken: string | null = null;
 
   private constructor() {}
 
@@ -90,6 +93,17 @@ class DatabaseService {
 
       console.log('DatabaseService: Signin response status:', response.status);
       const data = await handleResponse(response);
+
+      // Persist user and token for subsequent calls
+      const { user, token } = data as LoginResponse;
+      this.currentUser = user;
+      this.authToken = token;
+      try {
+        await SecureStore.setItemAsync('user', JSON.stringify(user));
+        await SecureStore.setItemAsync('token', token);
+      } catch (e) {
+        console.warn('Failed to persist auth to secure storage:', e);
+      }
       return data;
     } catch (error) {
       console.error('DatabaseService: Signin error:', error);
@@ -104,6 +118,125 @@ class DatabaseService {
   setCurrentUser(user: User | null): void {
     this.currentUser = user;
   }
+
+  // Retrieve user and token from secure storage. Matches callers expecting { data: { user } }
+  async getUser(): Promise<{ data: { user: User | null } }> {
+    if (this.currentUser) {
+      return { data: { user: this.currentUser } };
+    }
+    try {
+      const stored = await SecureStore.getItemAsync('user');
+      const token = await SecureStore.getItemAsync('token');
+      if (stored) {
+        const parsed = JSON.parse(stored) as User;
+        this.currentUser = parsed;
+        this.authToken = token || null;
+        return { data: { user: parsed } };
+      }
+    } catch (e) {
+      console.warn('Failed to read user from storage:', e);
+    }
+    return { data: { user: null } };
+  }
+
+  private authHeaders(): HeadersInit {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    if (this.authToken) {
+      headers['Authorization'] = `Bearer ${this.authToken}`;
+    }
+    return headers;
+  }
+
+  // Words: fetch a set of words for games. Maps server shape to frontend ApiWord
+  async getRandomWords(limit: number = 10): Promise<ApiWord[]> {
+    // Ensure auth present
+    if (!this.authToken) {
+      await this.getUser();
+    }
+    const response = await fetch(`${API_URL}/games/words`, {
+      method: 'GET',
+      headers: this.authHeaders(),
+    });
+    const payload = await handleResponse(response);
+    const words = (payload.words || []) as Array<{ id: string; tamil: string; hint?: string }>;
+    // Map to expected ApiWord
+    return words.slice(0, limit).map((w) => ({
+      id: String(w.id),
+      word: w.tamil,
+      meaning_ta: '',
+      notes: w.hint,
+      approved: true,
+      difficulty: 'medium',
+    }));
+  }
+
+  // Save game session results
+  async saveGameSession(session: Omit<ApiGameSession, 'id' | 'completed_at'>): Promise<ApiGameSession> {
+    const response = await fetch(`${API_URL}/games/sessions`, {
+      method: 'POST',
+      headers: this.authHeaders(),
+      body: JSON.stringify(session),
+    });
+    const data = await handleResponse(response);
+    // Ensure types line up
+    return {
+      id: data.id,
+      user_id: session.user_id,
+      game_type: session.game_type,
+      score: session.score,
+      max_score: session.max_score,
+      questions_answered: session.questions_answered,
+      correct_answers: session.correct_answers,
+      duration_seconds: session.duration_seconds,
+      difficulty_level: session.difficulty_level,
+      completed_at: data.completed_at || new Date().toISOString(),
+    };
+  }
+
+  // Leaderboard
+  async getLeaderboard(params: { timeFilter?: 'all' | 'week' | 'month'; limit?: number } = {}): Promise<ApiLeaderboardEntry[]> {
+    const url = new URL(`${API_URL}/games/leaderboard`);
+    if (params.timeFilter && params.timeFilter !== 'all') url.searchParams.set('timeFilter', params.timeFilter);
+    if (params.limit) url.searchParams.set('limit', String(params.limit));
+    const response = await fetch(url.toString(), { headers: this.authHeaders() });
+    const list = await handleResponse(response);
+    // Map server's fullName -> full_name expected by some screens
+    return (list as any[]).map((u) => ({
+      id: u.id,
+      full_name: u.fullName || u.full_name,
+      points: u.points || 0,
+      avatar_url: u.avatar_url,
+      rank: u.rank || 0,
+    }));
+  }
+
+  // Minimal user lookup; falls back to stored user
+  async getUserById(id: string): Promise<User | null> {
+    const stored = await this.getUser();
+    if (stored.data.user && stored.data.user.id === id) return stored.data.user;
+    // No backend endpoint yet; return null to avoid crashes
+    return null;
+  }
+
+  // Basic stats placeholder until backend exposes metrics endpoints
+  async getUserStats(id: string): Promise<{ totalPoints: number; gamesPlayed: number; currentStreak: number; rank: number }> {
+    const leaderboard = await this.getLeaderboard({ limit: 50 });
+    const entry = leaderboard.find((e) => e.id === id);
+    return {
+      totalPoints: entry?.points || 0,
+      gamesPlayed: 0,
+      currentStreak: 0,
+      rank: entry?.rank || 0,
+    };
+  }
 }
 
-export default DatabaseService.getInstance();
+const dbSingleton = DatabaseService.getInstance();
+export default dbSingleton;
+
+// Named exports used in some screens
+export const getRandomWords = (limit?: number) => dbSingleton.getRandomWords(limit);
+export const saveGameSession = (session: Omit<ApiGameSession, 'id' | 'completed_at'>) => dbSingleton.saveGameSession(session);

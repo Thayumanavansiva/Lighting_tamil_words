@@ -66,25 +66,23 @@ export default function AdminScreen() {
 
   const loadDashboardData = async () => {
     try {
-      const [wordsRes, usersRes, requestsRes] = await Promise.all([
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/words`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/users`),
-        fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/word-requests`)
-      ]);
-
-      if (!wordsRes.ok || !usersRes.ok || !requestsRes.ok) {
-        throw new Error('Failed to load dashboard data');
-      }
-
-      const [words, users, requests] = await Promise.all([
-        wordsRes.json(),
-        usersRes.json(),
-        requestsRes.json()
-      ]);
-
-      setWords(words || []);
-      setUsers(users || []);
-      setWordRequests(requests || []);
+      // Backend currently exposes leaderboard and game sessions; words/users/requests endpoints are not present.
+      // Populate minimal dashboard using available data to avoid runtime errors.
+      const leaderboard = await db.getLeaderboard({ limit: 50 });
+      setUsers(
+        leaderboard.map((u) => ({
+          id: u.id,
+          email: '',
+          fullName: u.full_name,
+          role: 'student',
+          points: u.points,
+          level: 1,
+          created_at: '',
+          updated_at: '',
+        })) as any
+      );
+      setWords([]);
+      setWordRequests([]);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
       Alert.alert('Error', 'Failed to load dashboard data');
@@ -100,23 +98,8 @@ export default function AdminScreen() {
     }
 
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/words`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...newWord,
-          difficulty: 'medium', // Default difficulty
-          approved: true,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to add word');
-      }
-
-      Alert.alert('Success', 'Word added successfully!');
+      // No backend endpoint yet; inform user.
+      Alert.alert('Unavailable', 'Adding words is not available in this demo build.');
       setShowAddWordModal(false);
       setNewWord({
         word: '',
@@ -130,79 +113,23 @@ export default function AdminScreen() {
       loadDashboardData();
     } catch (error) {
       console.error('Error adding word:', error);
-      Alert.alert('Error', 'Failed to add word. Please try again.');
+      Alert.alert('Error', 'Failed to add word.');
     }
   };
 
   const handleWordRequest = async (requestId: string, action: 'approve' | 'reject', adminResponse?: string) => {
     try {
-      if (action === 'approve') {
-        // First approve the word request
-        const request = wordRequests.find(r => r.id === requestId);
-        if (!request) return;
-
-        // Add word to words table
-        const addWordResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/words`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            word: request.word,
-            meaning_ta: request.meaning_ta,
-            notes: request.notes,
-            difficulty: 'medium', // Default difficulty
-            approved: true,
-          }),
-        });
-
-        if (!addWordResponse.ok) {
-          throw new Error('Failed to add word');
-        }
-      }
-
-      // Update request status
-      const updateResponse = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/word-requests/${requestId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          status: action === 'approve' ? 'approved' : 'rejected',
-          admin_response: adminResponse,
-          reviewed_at: new Date().toISOString(),
-        }),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update request');
-      }
-
-      Alert.alert('Success', `Request ${action}d successfully!`);
+      Alert.alert('Unavailable', 'Request moderation is not available in this demo build.');
       loadDashboardData();
     } catch (error) {
       console.error(`Error ${action}ing request:`, error);
-      Alert.alert('Error', `Failed to ${action} request. Please try again.`);
+      Alert.alert('Error', `Failed to ${action} request.`);
     }
   };
 
   const toggleWordApproval = async (wordId: string, currentStatus: boolean) => {
     try {
-      const response = await fetch(`${process.env.EXPO_PUBLIC_API_URL}/api/words/${wordId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          approved: !currentStatus,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update word status');
-      }
-
-      loadDashboardData();
+      Alert.alert('Unavailable', 'Word approval toggle is not available in this demo build.');
     } catch (error) {
       console.error('Error updating word approval:', error);
       Alert.alert('Error', 'Failed to update word status.');

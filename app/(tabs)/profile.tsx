@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, TextInput } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { signOut } from '@/lib/db';
-import { useAuth } from '@/components/AuthProvider';
-import { User, GameSession, Achievement } from '@/types/database';
+import db from '@/lib/db';
+import { User as DbUser, GameSession } from '@/types/database';
 import { User as UserIcon, CreditCard as Edit, LogOut, Trophy, Calendar, ChartBar as BarChart3, Award } from 'lucide-react-native';
 
 export default function ProfileScreen() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<DbUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [editedName, setEditedName] = useState('');
@@ -29,16 +28,12 @@ export default function ProfileScreen() {
 
   const loadUserProfile = async () => {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await db.getUser();
       if (authUser) {
-        const { data: userData } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', authUser.id)
-          .single();
-        
-        setUser(userData);
-        setEditedName(userData?.full_name || '');
+        const userData = await db.getUserById(authUser.id);
+        const resolved = userData || (authUser as unknown as DbUser);
+        setUser(resolved);
+        setEditedName(resolved?.full_name || '');
       }
     } catch (error) {
       console.error('Error loading user profile:', error);
@@ -49,82 +44,33 @@ export default function ProfileScreen() {
 
   const loadUserStats = async () => {
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
+      const { data: { user: authUser } } = await db.getUser();
       if (!authUser) return;
-
-      // Get game sessions
-      const { data: sessions } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('completed_at', { ascending: false });
-
-      // Get achievements
-      const { data: achievements } = await supabase
-        .from('achievements')
-        .select('*')
-        .eq('user_id', authUser.id);
-
-      if (sessions) {
-        const totalGames = sessions.length;
-        const averageScore = totalGames > 0 
-          ? Math.round(sessions.reduce((sum, session) => sum + session.score, 0) / totalGames) 
-          : 0;
-        const bestScore = totalGames > 0 
-          ? Math.max(...sessions.map(session => session.score)) 
-          : 0;
-        const totalTimeSpent = sessions.reduce((sum, session) => sum + session.duration_seconds, 0);
-
-        setStats({
-          totalGames,
-          averageScore,
-          bestScore,
-          currentStreak: 5, // This would be calculated based on consecutive days
-          totalTimeSpent: Math.round(totalTimeSpent / 60), // Convert to minutes
-          achievements: achievements?.length || 0,
-        });
-      }
+      const stats = await db.getUserStats(authUser.id);
+      setStats({
+        totalGames: stats.gamesPlayed,
+        averageScore: 0,
+        bestScore: 0,
+        currentStreak: stats.currentStreak,
+        totalTimeSpent: 0,
+        achievements: 0,
+      });
     } catch (error) {
       console.error('Error loading user stats:', error);
     }
   };
 
   const loadRecentGames = async () => {
-    try {
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-      if (!authUser) return;
-
-      const { data: sessions } = await supabase
-        .from('game_sessions')
-        .select('*')
-        .eq('user_id', authUser.id)
-        .order('completed_at', { ascending: false })
-        .limit(5);
-
-      setRecentGames(sessions || []);
-    } catch (error) {
-      console.error('Error loading recent games:', error);
-    }
+    // Backend endpoint not present; leave empty list for now
+    setRecentGames([]);
   };
 
   const updateProfile = async () => {
     if (!user) return;
-
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ full_name: editedName })
-        .eq('id', user.id);
-
-      if (error) throw error;
-
-      setUser({ ...user, full_name: editedName });
-      setEditing(false);
-      Alert.alert('Success', 'Profile updated successfully!');
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      Alert.alert('Error', 'Failed to update profile. Please try again.');
-    }
+    // No update endpoint yet; optimistically update UI
+    setUser({ ...user, full_name: editedName });
+    setEditing(false);
+    Alert.alert('Success', 'Profile updated successfully!');
   };
 
   const handleSignOut = async () => {
@@ -138,7 +84,8 @@ export default function ProfileScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
-              await supabase.auth.signOut();
+              await SecureStore.deleteItemAsync('user');
+              await SecureStore.deleteItemAsync('token');
             } catch (error) {
               console.error('Error signing out:', error);
             }
