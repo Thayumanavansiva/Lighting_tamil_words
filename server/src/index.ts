@@ -2,15 +2,24 @@ import express from 'express';
 import dotenv from 'dotenv';
 import { connectToDatabase, getDb } from './config/database';
 import { initializeSchema } from './config/schema';
+import authRoutes from './routes/auth';
+import gamesRoutes from './routes/games';
 
 dotenv.config();
 
 const app = express();
+export { app }; // Export the app for testing
+
 const PORT = process.env.PORT || 8081;
 
 app.use(express.json());
+app.use('/auth', authRoutes);
+app.use('/games', gamesRoutes);
 
 async function startServer() {
+  dotenv.config({
+    path:"./.env",
+  });
   try {
     await connectToDatabase();
     await initializeSchema(getDb());

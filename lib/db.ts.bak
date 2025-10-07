@@ -14,11 +14,6 @@ interface SignupData {
   grade?: string;
 }
 
-interface LoginResponse {
-  user: User;
-  token: string;
-}
-
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://127.0.0.1:3000/api';
 
 // Helper function to handle API responses
@@ -75,7 +70,35 @@ class DatabaseService {
     }
   }
 
-  async signIn(email: string, password: string): Promise<LoginResponse> {
+
+  async signUp(data: SignupData): Promise<SignupResponse> {
+    console.log('DatabaseService: Attempting signup with:', {
+      email: data.email,
+      fullName: data.fullName,
+      role: data.role,
+      schoolName: data.schoolName,
+      grade: data.grade
+    });
+    
+    try {
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      console.log('DatabaseService: Signup response status:', response.status);
+      return handleResponse(response);
+    } catch (error) {
+      console.error('DatabaseService: Signup error:', error);
+      throw error;
+    }
+  }
+
+  async signIn(email: string, password: string): Promise<SignupResponse> {
     console.log('DatabaseService: Attempting signin with:', { email });
     
     try {
@@ -89,10 +112,60 @@ class DatabaseService {
       });
 
       console.log('DatabaseService: Signin response status:', response.status);
-      const data = await handleResponse(response);
-      return data;
+      return handleResponse(response);
+      } catch (e) {
+        throw new Error('Failed to parse server response');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sign in');
+      }
+
+      this.currentUser = data;
+      return { data: { user: data } };
     } catch (error) {
-      console.error('DatabaseService: Signin error:', error);
+      throw error;
+    }
+  }
+
+  async signUp(
+    email: string,
+    password: string,
+    fullName: string,
+    role: 'student' | 'teacher' = 'student',
+    schoolName?: string,
+    grade?: string
+  ): Promise<{ user: User }> {
+    try {
+      const response = await fetch(`${API_URL}/auth/signup`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          password,
+          fullName,
+          role,
+          schoolName,
+          grade,
+        }),
+      });
+
+      let data;
+      try {
+        data = await response.json();
+      } catch (e) {
+        throw new Error('Failed to parse server response');
+      }
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to sign up');
+      }
+      this.currentUser = data;
+      return { user: data };
+    } catch (error) {
       throw error;
     }
   }
@@ -100,10 +173,7 @@ class DatabaseService {
   getCurrentUser(): User | null {
     return this.currentUser;
   }
-
-  setCurrentUser(user: User | null): void {
-    this.currentUser = user;
-  }
 }
 
-export default DatabaseService.getInstance();
+const db = DatabaseService.getInstance();
+export default db;

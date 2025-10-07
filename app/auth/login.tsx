@@ -21,7 +21,7 @@ export default function LoginScreen() {
     setLoading(true);
     try {
       const response = await db.signIn(email, password);
-      const user = response.data.user;
+      const user = response.user;
       
       if (!user || !user.id) {
         throw new Error('Invalid login response');
